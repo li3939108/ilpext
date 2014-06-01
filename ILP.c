@@ -5,12 +5,14 @@
 #include <lp_lib.h>
 #include <string.h>
 #include "ruby.h"
+#include "extconf.h"
 
 #define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 
 //#define DEBUG
 
 
+#ifdef  HAVE_ILCPLEX_CPLEX_H
 static void free_and_null (char **ptr){
 	if ( *ptr != NULL ) {
 		free (*ptr);
@@ -34,6 +36,7 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
 	bool error_set = false ;
 	VALUE error_type = rb_eFatal ;
 	const char *error_msg = NULL ;
+	FILE *log = fopen("./CPX.log", "w") ;
 	
 
 	char zprobname[] = "scheduling" ;
@@ -146,6 +149,9 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
 	status = CPXsetintparam (env, CPXPARAM_ScreenOutput, CPX_ON);
 	#else
 	status = CPXsetintparam (env, CPXPARAM_ScreenOutput, CPX_OFF);
+	if(log != NULL){
+		status = CPXsetlogfile (env, log) ;}
+
 	#endif
 	if ( status ) {
 		error_set = true ;error_type = rb_eFatal; error_msg ="Failure to turn on screen indicator, error";
@@ -287,7 +293,9 @@ TERMINATE:
 		return ret_hash ;
 	}
 }
+#endif
 
+#ifdef HAVE_LP_LIB_H 
 /*
  * min(max_bar)      c x
  *               A x op  b
@@ -396,9 +404,14 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min)
 	return ret_hash;
 
 }
+#endif
 void Init_ILP(){
+	#ifdef HAVE_LP_LIB_H
 	rb_define_global_function("lpsolve", lpsolve, 5);
+	#endif
+	#ifdef HAVE_ILCPLEX_CPLEX_H
 	rb_define_global_function("cplex", cplex, 5);
+	#endif
 	rb_define_global_const( "LE", INT2FIX(1)) ;
 	rb_define_global_const( "GE", INT2FIX(2)) ;
 	rb_define_global_const( "EQ", INT2FIX(3)) ;

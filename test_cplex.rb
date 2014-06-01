@@ -26,5 +26,3 @@ b=[
 min = false
 
 print ilp(a, op, b, c, min, :cplex), "\n"
-print "-------------------\n"
-print ilp(a, op, b, c, min, :lpsolve), "\n"
