@@ -22,8 +22,15 @@ static void free_and_null (char **ptr){
 		*ptr = NULL;
 	}
 }
+/* Solve the Integer Linear Programming (ILP) Problem
+ *
+ * min (max)    c    x
+ *              A    x    op    b
+ *              Int  x
+ *                   x    >=    0
+ */
 
-static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
+static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
 	Check_Type(A, T_ARRAY) ;
 	Check_Type(op, T_ARRAY) ;
 	Check_Type(b, T_ARRAY) ;
@@ -42,7 +49,7 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
 	FILE *log = fopen("./CPX.log", "w") ;
 	
 
-	char zprobname[] = "scheduling" ;
+	char zprobname[] = "N/A" ;
 	int objsen      = 0;
 	double *zobj    = (double *) malloc(Ncolumn * sizeof(double));
 	double *zrhs    = (double *)malloc(Nrow * sizeof *zrhs);
@@ -70,11 +77,13 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
 	CPXLPptr      lp = NULL;
 
 
-	if(TYPE(min) == T_TRUE){
-		objsen = CPX_MIN ;
-	}else{if(TYPE(min) == T_FALSE){
-		objsen = CPX_MAX ;
-	}}
+	if(TYPE(m_symbol) == T_SYMBOL){
+		ID m =  rb_to_id (m_symbol)  ;
+		if( m == rb_intern("min") ){
+			objsen = CPX_MIN ;
+		}else{if(m == rb_intern("max") ){
+			objsen = CPX_MAX ;}}
+	}
 	
 	if(RARRAY_LEN(op) != Nrow){
 		error_set = true ;error_type = rb_eFatal; error_msg ="arguments does not match: op != Nrow";
@@ -272,7 +281,9 @@ TERMINATE:
 			error_set = true ;error_type = rb_eFatal; error_msg = "Could not close CPLEX environment" ;
 		}
 	}
-
+	/* Free up the log file */
+	if( log != NULL){
+		fclose(log) ;}
 
 	/* Free up the problem data arrays, if necessary. */
 
@@ -299,11 +310,7 @@ TERMINATE:
 #endif
 
 #ifdef HAVE_LP_LIB_H 
-/*
- * min(max_bar)      c x
- *               A x op  b
- */
-static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min){
+static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
 	Check_Type(A, T_ARRAY) ;
 	Check_Type(op, T_ARRAY) ;
 	Check_Type(b, T_ARRAY) ;
@@ -323,11 +330,13 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE min)
 	lp = make_lp(0, (int)Ncolumn);
 	set_verbose(lp, SEVERE);
 
-	if(TYPE(min) == T_TRUE){
-		set_minim(lp);
-	}else{if(TYPE(min) == T_FALSE){
-		set_maxim(lp);
-	}}
+	if(TYPE(m_symbol) == T_SYMBOL){
+		ID m =  rb_to_id (m_symbol)  ;
+		if( m == rb_intern("min") ){
+			set_minim(lp);
+		}else{if(m == rb_intern("max") ){
+			set_maxim(lp);}}
+	}
 	
 	if(RARRAY_LEN(op) != Nrow){
 		rb_raise(rb_eArgError, "Length of op does not match that of A");

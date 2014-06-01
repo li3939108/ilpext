@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
-require_relative 'ILP'
+require './ILP.so'
 
-def ilp(a, op, b, c, min, method)
-	self.send(method, a, op, b, c, min)
+def ilp(a, op, b, c, m, method)
+	self.send(method, a, op, b, c, m)
 end 

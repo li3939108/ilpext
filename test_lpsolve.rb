@@ -23,6 +23,5 @@ b=[
 	10, 
 	12]
 #
-min = false
 
-print ilp(a, op, b, c, min, :lpsolve), "\n"
+print ilp(a, op, b, c, :max, :lpsolve), "\n"
