@@ -1,4 +1,5 @@
-Tested only on Linux systems, should work on MAX OS X
+Tested only on Linux systems with Ruby 1.9 or later version, 
+should also work on MAX OS X
 
 
 1. make a soft link or copy of the library file 
