@@ -1,5 +1,4 @@
 #! /usr/bin/env  ruby
-
 # 2014 by Chaofan Li <chaof@tamu.edu>
 
 require_relative 'ilp'

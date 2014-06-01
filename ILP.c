@@ -22,14 +22,15 @@ static void free_and_null (char **ptr){
 		*ptr = NULL;
 	}
 }
-/* Solve the Integer Linear Programming (ILP) Problem
- *
- * min (max)    c    x
- *              A    x    op    b
- *              Int  x
- *                   x    >=    0
- */
 
+/* Solve the Integer Linear Programming (ILP) Problem,
+ * using CPLEX
+ *
+ *  min (max)    c    x
+ *               A    x    op    b
+ *               Int  x
+ *                    x    >=    0
+ */
 static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
 	Check_Type(A, T_ARRAY) ;
 	Check_Type(op, T_ARRAY) ;
@@ -310,6 +311,15 @@ TERMINATE:
 #endif
 
 #ifdef HAVE_LPSOLVE_LP_LIB_H 
+/* Solve the Integer Linear Programming (ILP) Problem,
+ * using lp_solve
+ *
+ *  min (max)    c    x
+ *               A    x    op    b
+ *               Int  x
+ *                    x    >=    0
+ */
+
 static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
 	Check_Type(A, T_ARRAY) ;
 	Check_Type(op, T_ARRAY) ;
@@ -419,10 +429,10 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 #endif
 void Init_ILP(){
 	#ifdef HAVE_LPSOLVE_LP_LIB_H
-	rb_define_global_function("lpsolve", lpsolve, 5);
+	rb_define_method(rb_cObject, "lpsolve", lpsolve, 5);
 	#endif
 	#ifdef HAVE_ILCPLEX_CPLEX_H
-	rb_define_global_function("cplex", cplex, 5);
+	rb_define_method(rb_cObject, "cplex", cplex, 5);
 	#endif
 	rb_define_global_const( "LE", INT2FIX(1)) ;
 	rb_define_global_const( "GE", INT2FIX(2)) ;
