@@ -1,7 +1,5 @@
 #  2014 by Chaofan Li <chaof@tamu.edu>
 require 'mkmf'
-gem 'rdoc'
-require 'rdoc/rdoc'
 
 lpsolve = 'lpsolve'
 cplex = 'cplex'
@@ -24,9 +22,6 @@ if	(have_lpsolve or have_cplex) and
 	RPATHFLAG << " -Wl,-rpath,./lib"
 	create_header
 	create_makefile('ILP')
-	options = RDoc::Options.new
-	rdoc = RDoc::RDoc.new
-	rdoc.document options
 else
 	raise "no LP solver found, you must have at least one solver"
 end
