@@ -2,18 +2,21 @@ Tested only on Linux systems with Ruby 1.9 or later version,
 should also work on MAX OS X
 
 
-1. make a soft link or copy of the library file 
+1. Make soft links or copy of the library files 
    {liblpsolve55 libcplexXXXX}.so(.dylib on max os x) 
-   to lib directory. Overwrite the symbolic link if 
+   to ./lib directory. Overwrite the symbolic link if 
    you need to.
 
-2. $ ruby extconf.rb
+2. Make soft links of copy of the header files directory
+   of the two library to the ./include dircetory.
+
+3. $ ruby extconf.rb
    # Generate the Makefile
    
-3. $ make
+4. $ make
 
-4. $ ./test_cplex.rb
+5. $ ./test_cplex.rb
    $ ./test_lpsolve.rb
 
-5. If you can get output, 
+666666. If you can get output, 
    Congrats, I think it works on your platform 
