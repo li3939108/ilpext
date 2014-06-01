@@ -7,7 +7,7 @@ should also work on MAX OS X
    to ./lib directory. Overwrite the symbolic link if 
    you need to.
 
-2. Make soft links of copy of the header files directory
+2. Make soft links or copy of the header files directory
    of the two library to the ./include dircetory.
 
 3. $ ruby extconf.rb
