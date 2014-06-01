@@ -1,5 +1,7 @@
 #! /usr/bin/env  ruby
 
+# 2014 by Chaofan Li <chaof@tamu.edu>
+
 require './ilp.rb'
 
 #solve the ILP problem
