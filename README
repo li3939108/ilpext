@@ -1,13 +1,18 @@
 Tested only on Linux systems, should work on MAX OS X
+
+
 1. make a soft link or copy of the library file 
    {liblpsolve55 libcplexXXXX}.so(.dylib on max os x) 
-   to lib directory
+   to lib directory. Overwrite the symbolic link if 
+   you need to.
 
 2. $ ruby extconf.rb
-
+   # Generate the Makefile
+   
 3. $ make
 
-4. $ ./test.rb
+4. $ ./test_cplex.rb
+   $ ./test_lpsolve.rb
 
 5. If you can get output, 
    Congrats, I think it works on your platform 
