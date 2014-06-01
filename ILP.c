@@ -309,7 +309,7 @@ TERMINATE:
 }
 #endif
 
-#ifdef HAVE_LP_LIB_H 
+#ifdef HAVE_LPSOLVE_LP_LIB_H 
 static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
 	Check_Type(A, T_ARRAY) ;
 	Check_Type(op, T_ARRAY) ;
@@ -418,7 +418,7 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 }
 #endif
 void Init_ILP(){
-	#ifdef HAVE_LP_LIB_H
+	#ifdef HAVE_LPSOLVE_LP_LIB_H
 	rb_define_global_function("lpsolve", lpsolve, 5);
 	#endif
 	#ifdef HAVE_ILCPLEX_CPLEX_H

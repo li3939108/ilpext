@@ -1,6 +1,6 @@
 #! /usr/bin/env  ruby
 
-require './ilp.rb'
+require_relative 'ilp'
 
 #solve the ILP problem
 

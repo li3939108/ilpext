@@ -2,7 +2,7 @@
 
 # 2014 by Chaofan Li <chaof@tamu.edu>
 
-require './ilp.rb'
+require_relative 'ilp'
 
 #solve the ILP problem
 
