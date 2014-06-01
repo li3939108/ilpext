@@ -18,5 +18,5 @@ should also work on MAX OS X
 5. $ ./test_cplex.rb
    $ ./test_lpsolve.rb
 
-666666. If you can get output, 
+6. If you can get output, 
    Congrats, I think it works on your platform 
