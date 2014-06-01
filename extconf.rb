@@ -1,12 +1,6 @@
 require 'mkmf'
+#  2014 by Chaofan Li <chaof@tamu.edu>
 
-#ruby extconf.rb --with-DFG_ILP-dir=dir
-#set the lib and include directory associated with DFG_ILP to dir/lib dir/include
-#ruby extconf.rb
-#will set the lib and include directory associated with DFG_ILP to ./lib and ./include
-#ruby extconf.rb --with-DFG_ILP-lib=lib will set the lib directory to lib
-#ruby extconf.rb --with-DFG_ILP-include=include will set the include directory to include
-#lpsolve_lib = './lib'
 lpsolve = 'lpsolve'
 cplex = 'cplex'
 have_lpsolve = false
