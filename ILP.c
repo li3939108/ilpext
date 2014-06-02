@@ -9,11 +9,9 @@
 #include "extconf.h"
 
 #define round(x,e) ((x)>=0?(long)((x)+(e)):(long)((x)-(e)))
-#ifndef HEADER_lp_lib
 #define __LE 1
 #define __EQ 3
 #define __GE 2
-#endif
 
 
 //#define DEBUG
