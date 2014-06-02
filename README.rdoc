@@ -8,7 +8,7 @@ Make soft links or copy of the library files
 to ./lib directory. Overwrite the symbolic link if 
 you need to.
 
-Then Make soft links or copy of the header files directory
+Then make soft links or copy of the header files directory
 of the two library to the ./include dircetory.
 
 Then you are ready to generate the Makefile
@@ -24,4 +24,4 @@ To test if it works
   $ ./test_cplex.rb
   $ ./test_lpsolve.rb
 
-If you can get output, Congrats, I think it works on your platform 
+If you can get output, Congrats! I think it works on your platform 
