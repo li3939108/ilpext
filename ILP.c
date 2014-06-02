@@ -4,18 +4,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <ilcplex/cplex.h>
-#include <lpsolve/lp_lib.h>
 #include <string.h>
 #include "ruby.h"
 #include "extconf.h"
 
-#define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
+#define round(x,e) ((x)>=0?(long)((x)+(e)):(long)((x)-(e)))
+#ifndef HEADER_lp_lib
+#define __LE 1
+#define __EQ 3
+#define __GE 2
+#endif
+
 
 //#define DEBUG
 
 
 #ifdef  HAVE_ILCPLEX_CPLEX_H
+#include <ilcplex/cplex.h>
 static void free_and_null (char **ptr){
 	if ( *ptr != NULL ) {
 		free (*ptr);
@@ -112,15 +117,15 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symb
 		}
 		constraint_type = FIX2INT(rb_ary_entry(op,i));
 		switch(constraint_type){
-			case LE : 
+			case __LE : 
 			zsense[i] = 'L' ;
 			break;
 			
-			case EQ :
+			case __EQ :
 			zsense[i] = 'E' ;
 			break ;
 			
-			case GE :
+			case __GE :
 			zsense[i] = 'G' ;
 			break ;
 			
@@ -217,7 +222,7 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symb
 	#ifdef DEBUG
 	printf ("Solution value  = %f\n\n", objval);
 	#endif
-	rb_hash_aset(ret_hash, ID2SYM(rb_intern("o")), rb_float_new( objval) ); 
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("o")), DBL2NUM( objval) ); 
 	/* The size of the problem should be obtained by asking CPLEX what
            the actual size is, rather than using what was passed to CPXcopylp.
            cur_numrows and cur_numcols store the current number of rows and
@@ -235,14 +240,14 @@ static VALUE cplex(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symb
 		goto TERMINATE ;
 	}
 	for (i = 0; i < cur_numrows; i++) {
-		rb_ary_store(constraints, i , INT2FIX( round(slack[i] ) ) );
+		rb_ary_store(constraints, i , DBL2NUM( slack[i]  ) );
 		#ifdef DEBUG
 		printf ("Row %d:  Slack = %f\n", i, slack[i]); 
 		#endif
 	}
-	rb_hash_aset(ret_hash, ID2SYM(rb_intern("c")), constraints);
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("s")), constraints);
 	for (i = 0; i < cur_numcols; i++){
-		rb_ary_store(variables, i, INT2FIX( round(x[i])  ) ) ;
+		rb_ary_store(variables, i, INT2FIX( round(x[i], 0.5)  ) ) ;
 		#ifdef DEBUG
 		printf ("Column %d:  Value = %f\n", i, x[i]); 
 		#endif
@@ -311,6 +316,7 @@ TERMINATE:
 #endif
 
 #ifdef HAVE_LPSOLVE_LP_LIB_H 
+#include <lpsolve/lp_lib.h>
 /* Solve the Integer Linear Programming (ILP) Problem,
  * using lp_solve
  *
@@ -329,14 +335,15 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 	int Ncolumn = (int)RARRAY_LEN(c);
 	int i;
 	int ret ;
-	lprec *lp = NULL;
 	REAL row[1 + Ncolumn] ;
 	REAL result[1 + Nrow + Ncolumn];
+	REAL b_dbl[Nrow] ;
 
 	VALUE ret_hash = rb_hash_new();
 	VALUE constraints = rb_ary_new2(Nrow);
 	VALUE variables = rb_ary_new2(Ncolumn);
 
+	lprec *lp = NULL;
 	lp = make_lp(0, (int)Ncolumn);
 	set_verbose(lp, SEVERE);
 
@@ -363,7 +370,6 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 	for(i = 0; i < Nrow; i++){
 		VALUE row_v = rb_ary_entry(A, i);
 		int j;
-		REAL b_dbl;
 		int constraint_type ;
 		Check_Type(row_v, T_ARRAY);
 		if(RARRAY_LEN(row_v) != Ncolumn){
@@ -373,8 +379,8 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 			row[j + 1] = NUM2DBL(rb_ary_entry(row_v, j));
 		}
 		constraint_type = FIX2INT(rb_ary_entry(op,i));
-		b_dbl = NUM2DBL(rb_ary_entry(b, i));
-		add_constraint(lp, row, constraint_type, b_dbl); 
+		b_dbl[i] = NUM2DBL(rb_ary_entry(b, i));
+		add_constraint(lp, row, constraint_type, b_dbl[i]); 
 	}
 	set_add_rowmode(lp, false);
 	#ifdef  DEBUG
@@ -386,9 +392,13 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 	}
 	
 	set_obj_fn(lp, row);
+	#ifdef DEBUG
 	printf("start solve\n");
+	#endif
 	ret = solve(lp);
+	#ifdef DEBUG
 	printf("solve return value: %d \n", ret);
+	#endif
 	switch(ret){
 		case 2: rb_raise(rb_eFatal, "no solution");
 		break ;
@@ -412,14 +422,15 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 	#endif	
 	for(i = 1; i < 1 + get_Nrows(lp) + get_Ncolumns(lp); i++){
 		if(i >= 1 && i <= get_Nrows(lp)){
-			rb_ary_store(constraints, i - 1, INT2NUM((int)result[i]));
+			double slack = b_dbl[i - 1] - result[i];
+			rb_ary_store(constraints, i - 1, DBL2NUM(slack >= 0 ? slack : -slack)) ;
 		}else{if(i >= 1 + get_Nrows(lp) && i <= get_Nrows(lp) + get_Ncolumns(lp)){
-			rb_ary_store(variables, i - 1 - get_Nrows(lp), INT2NUM((int)result[i]));
+			rb_ary_store(variables, i - 1 - get_Nrows(lp), INT2NUM(round(result[i], 0.5) ));
 		}}
 	}
 
-	rb_hash_aset(ret_hash, ID2SYM(rb_intern("o")), rb_float_new(result[0]));
-	rb_hash_aset(ret_hash, ID2SYM(rb_intern("c")), constraints);
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("o")), DBL2NUM(result[0]));
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("s")), constraints);
 	rb_hash_aset(ret_hash, ID2SYM(rb_intern("v")), variables);
 	
 	delete_lp(lp);
@@ -427,12 +438,194 @@ static VALUE lpsolve(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_sy
 
 }
 #endif
+
+#ifdef HAVE_GUROBI_GUROBI_C_H 
+#include "gurobi/gurobi_c.h"
+
+VALUE gurobi(VALUE self, VALUE A, VALUE op, VALUE b, VALUE c, VALUE m_symbol){
+	Check_Type(A, T_ARRAY) ;
+	Check_Type(op, T_ARRAY) ;
+	Check_Type(b, T_ARRAY) ;
+	Check_Type(c, T_ARRAY) ;
+	int Nrow = (int)RARRAY_LEN(A); 
+	int Ncolumn = (int)RARRAY_LEN(c);
+	int i;
+
+	VALUE ret_hash = rb_hash_new();
+	VALUE constraints = rb_ary_new2(Nrow);
+	VALUE variables = rb_ary_new2(Ncolumn);
+
+	GRBenv   *env   = NULL;
+	GRBmodel *model = NULL;
+	int       error = 0;
+	double    slack[Nrow] ;
+	double    *sol = (double *)calloc(Ncolumn, sizeof *sol);
+	int       ind[Ncolumn];
+	double    val[Ncolumn];
+	double    obj[Ncolumn];
+	char      vtype[Ncolumn];
+	int       optimstatus;
+	double    objval;
+
+	/* Create environment */
+
+	error = GRBloadenv(&env, "GRB.log");
+	if (error) goto QUIT;
+
+	/* Create an empty model */
+
+	error = GRBnewmodel(env, &model, "N/A", 0, NULL, NULL, NULL, NULL, NULL);
+	if (error) goto QUIT;
+
+
+	/* Add variables */
+	#ifdef  DEBUG
+	printf("number of variables: %d\n", Ncolumn);
+	#endif
+	for(i = 0; i < Ncolumn; i++){
+		obj[i] = NUM2DBL(rb_ary_entry(c, i));
+		vtype[i] = GRB_INTEGER ;
+	}
+  	error = GRBaddvars(model, Ncolumn, 0, NULL, NULL, NULL, obj, NULL, NULL, vtype, NULL);
+	if (error) goto QUIT;
+
+	/* Change objective sense to maximization */
+	if(TYPE(m_symbol) == T_SYMBOL){
+		ID sense =  rb_to_id (m_symbol)  ;
+		if( sense == rb_intern("min") ){
+  			error = GRBsetintattr(model, GRB_INT_ATTR_MODELSENSE, GRB_MINIMIZE);
+		}else{if(sense == rb_intern("max") ){
+  			error = GRBsetintattr(model, GRB_INT_ATTR_MODELSENSE, GRB_MAXIMIZE);
+		}}
+	}
+	error = GRBsetintattr(model, GRB_INT_ATTR_MODELSENSE, GRB_MAXIMIZE);
+	if (error) goto QUIT;
+
+	/* Integrate new variables */
+  	error = GRBupdatemodel(model);if (error) goto QUIT;
+
+	#ifdef DEBUG
+	printf("number of constraints: %d\n", Nrow);
+	#endif
+	for(i = 0; i < Nrow; i++){
+		VALUE row_v = rb_ary_entry(A, i);
+		int j, constraint_type, nz_count = 0;
+		char zsense ;
+		REAL b_dbl;
+		Check_Type(row_v, T_ARRAY);
+		if(RARRAY_LEN(row_v) != Ncolumn){
+			rb_raise(rb_eArgError, 
+			"Length of row %d :%ld doen not match that of c:%d, i.e., the objective", 
+			i + 1, RARRAY_LEN(row_v) ,Ncolumn);
+		}
+		for(j = 0; j < Ncolumn; j++){
+			val[j] = NUM2DBL(rb_ary_entry(row_v, j));
+			if (val[j] != 0.0){
+				ind[nz_count++] = j ;
+			}
+			//ind[j] = j;
+		}
+		constraint_type = FIX2INT(rb_ary_entry(op,i));
+		switch(constraint_type){
+			case LE : 
+			zsense = GRB_LESS_EQUAL ;
+			break;
+			
+			case EQ :
+			zsense = GRB_EQUAL ;
+			break ;
+			
+			case GE :
+			zsense = GRB_GREATER_EQUAL ;
+			break ;
+			
+			default :
+			fprintf(stderr, "unknow contstraint type");
+			goto QUIT ;
+			break ;
+		}	
+		b_dbl = NUM2DBL(rb_ary_entry(b, i));
+		error = GRBaddconstr(model, nz_count, ind, val, zsense, b_dbl, NULL);
+		if (error){
+			fprintf(stderr, "error encountered when adding constraint %d\n", i) ;
+			goto QUIT;
+		}
+	}
+	/* Optimize model */
+  	error = GRBoptimize(model);if (error) goto QUIT;
+  	/* Write model to 'mip1.lp' */
+	error = GRBwrite(model, "gurobi.lp");if (error) goto QUIT;
+	/* Capture solution information */
+	error = GRBgetintattr(model, GRB_INT_ATTR_STATUS, &optimstatus);
+	if (error) goto QUIT;
+
+	error = GRBgetdblattr(model, GRB_DBL_ATTR_OBJVAL, &objval);
+	if (error) goto QUIT;
+
+	error = GRBgetdblattrarray(model, GRB_DBL_ATTR_X, 0, Ncolumn, sol);
+	if (error) goto QUIT;
+
+	error = GRBgetdblattrarray(model, GRB_DBL_ATTR_SLACK, 0, Nrow, slack);
+	if (error) goto QUIT;
+
+	#ifdef DEBUG
+	printf("\nOptimization complete\n");
+	#endif
+	
+	if (optimstatus == GRB_OPTIMAL) {
+		rb_hash_aset(ret_hash, ID2SYM(rb_intern("o")), rb_float_new( objval) ); 
+		#ifdef DEBUG
+		printf("Optimal objective: %.4e\n", objval);
+		#endif
+		for(i = 0; i < Ncolumn; i++){
+			rb_ary_store(variables, i, INT2NUM(round(sol[i], 0.5) ) );
+			#ifdef DEBUG
+			printf("Column %d: %d\n", i, (int)round(sol[i], 0.5));
+			#endif
+		}
+		for(i = 0; i < Nrow; i++){
+			rb_ary_store(constraints, i, DBL2NUM(slack[i]) ) ;
+			#ifdef DEBUG
+			printf("slack %d: %f\n", i, slack[i]);
+			#endif
+		}
+	} else if (optimstatus == GRB_INF_OR_UNBD) {
+		#ifdef DEBUG
+		printf("Model is infeasible or unbounded\n");
+		#endif
+	} else {
+		#ifdef DEBUG
+		printf("Optimization was stopped early\n");
+		#endif
+	}
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("v")), variables);
+	rb_hash_aset(ret_hash, ID2SYM(rb_intern("s")), constraints);
+
+QUIT:
+	/* Error reporting */
+	if (error) {
+		GRBfreemodel(model);
+		GRBfreeenv(env);
+		free(sol);
+		rb_raise(rb_eFatal, "%s",  GRBgeterrormsg(env)) ;
+	}
+	/* Free all */
+	GRBfreemodel(model);
+	GRBfreeenv(env);
+	free(sol);
+	return ret_hash;
+}
+#endif
+
 void Init_ILP(){
 	#ifdef HAVE_LPSOLVE_LP_LIB_H
 	rb_define_method(rb_cObject, "lpsolve", lpsolve, 5);
 	#endif
 	#ifdef HAVE_ILCPLEX_CPLEX_H
 	rb_define_method(rb_cObject, "cplex", cplex, 5);
+	#endif
+	#ifdef HAVE_GUROBI_GUROBI_C_H 
+	rb_define_method(rb_cObject, "gurobi", gurobi, 5);
 	#endif
 	rb_define_global_const( "LE", INT2FIX(1)) ;
 	rb_define_global_const( "GE", INT2FIX(2)) ;
