@@ -4,7 +4,7 @@ should also work on MAX OS X
 == How to use it
 
 Make soft links or copy of the library files 
-{liblpsolve55 libcplexXXXX}.so(.dylib on max os x) 
+{liblpsolve55 libcplexXXXX libgurobi}.so(.dylib on max os x) 
 to ./lib directory. Overwrite the symbolic link if 
 you need to.
 
